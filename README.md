@@ -1,26 +1,25 @@
 <p align="center">
     <picture>
-        <source height="128" media="(prefers-color-scheme: dark)" srcset="https://github.com/tn3w/rusty-shield/releases/download/logo/rusty-logo-dark.png">
-        <source height="128" media="(prefers-color-scheme: light)" srcset="https://github.com/tn3w/rusty-shield/releases/download/logo/rusty-logo-light.png">
-        <img height="128" alt="Picture from Block Page" src="https://github.com/tn3w/rusty-shield/releases/download/logo/rusty-logo-light.png">
+        <source height="128" media="(prefers-color-scheme: dark)" srcset="https://github.com/tn3w/rshield/releases/download/logo/rusty-logo-dark.png">
+        <source height="128" media="(prefers-color-scheme: light)" srcset="https://github.com/tn3w/rshield/releases/download/logo/rusty-logo-light.png">
+        <img height="128" alt="Picture from Block Page" src="https://github.com/tn3w/rshield/releases/download/logo/rusty-logo-light.png">
     </picture>
 </p>
-<h1 align="center">rusty-shield</h1>
-<h6 align="center">A component of the Rusty toolbox designed for web application security: <a href="https://github.com/tn3w/rusty-loadbalancing">rusty-loadbalancing</a>, <a href="https://github.com/tn3w/rusty-shield">rusty-shield</a></h6>
+<h1 align="center">rshield</h1>
 <p align="center">An Actix-web middleware for checking IP addresses to identify unglobal, malicious, and TOR connections. It provides the browser with a zero-click Proof of Work (PoW) task, or, if JavaScript is disabled, a one-click CAPTCHA image challenge.</p>
 
 ## 🚀 Installing
 Just add the following line to `[dependencies]` in your `Cargo.toml` file:
 ```toml
 [dependencies]
-rusty_shield = { git = "https://github.com/tn3w/rusty-shield" }
+rshield = { git = "https://github.com/tn3w/rshield" }
 ```
 
 And then integrate the MiddleWare into your Actix-web app by registering it:
 
 ```rust
 use actix_web::{web, App, HttpServer, HttpResponse};
-use rusty_shield::{RequestValidationMiddleware, CookieMiddleware};
+use rshield::{RequestValidationMiddleware, CookieMiddleware};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -48,12 +47,12 @@ async fn main() -> std::io::Result<()> {
 
 2. Clone the git project:
     ```bash
-    git clone https://github.com/tn3w/rusty-shield.git
+    git clone https://github.com/tn3w/rshield.git
     ```
 
 3. Move into the project folder:
     ```bash
-    cd rusty-shield
+    cd rshield
     ```
 
 4. Setup Redis
@@ -70,7 +69,7 @@ async fn main() -> std::io::Result<()> {
     sudo apt-get install libssl-dev -y
     ``` 
 
-6. Build rusty-shield
+6. Build rshield
     ```bash
     cargo build --release
     ```

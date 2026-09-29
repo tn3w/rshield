@@ -1,24 +1,20 @@
+use actix_web::body::EitherBody;
+use actix_web::{
+    body::MessageBody,
+    cookie,
+    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    error::Error,
+    http::header,
+    HttpMessage, HttpResponse,
+};
+use futures_util::future::LocalBoxFuture;
 use std::collections::HashMap;
 use std::future::{ready, Future, Ready};
 use std::pin::Pin;
 use std::sync::Arc;
-use futures_util::future::LocalBoxFuture;
-use actix_web::{
-    cookie,
-    dev::{
-        forward_ready, Service, ServiceRequest,
-        ServiceResponse, Transform
-    },
-    error::Error,
-    http::header,
-    body::MessageBody,
-    HttpMessage,
-    HttpResponse,
-};
-use actix_web::body::EitherBody;
 
-mod utils;
 mod ip_validator;
+mod utils;
 use ip_validator::IpChecker;
 mod renderer;
 use renderer::render_check;
@@ -30,6 +26,8 @@ mod captcha;
 // TODO: Each request will distort these images and store the correct versions along with a timestamp and the corresponding IP address
 // TODO: for correlation purposes. All templates and AI datasets should be preloaded into memory at startup for efficient access.
 
+const REDIS_URL: &str = "redis://127.0.0.1/";
+
 const LANGUAGES: [&str; 107] = [
     "af", "sq", "am", "ar", "hy", "az", "eu", "be", "bn", "bs", "bg", "ca", "ceb", "ny",
     "zh-cn", "zh-tw", "co", "hr", "cs", "da", "nl", "en", "eo", "et", "tl", "fi", "fr",
@@ -38,11 +36,17 @@ const LANGUAGES: [&str; 107] = [
     "la", "lv", "lt", "lb", "mk", "mg", "ms", "ml", "mt", "mi", "mr", "mn", "my", "ne",
     "no", "or", "ps", "fa", "pl", "pt", "pa", "ro", "ru", "sm", "gd", "sr", "st", "sn",
     "sd", "si", "sk", "sl", "so", "es", "su", "sw", "sv", "tg", "ta", "te", "th", "tr",
-    "uk", "ur", "ug", "uz", "vi", "cy", "xh", "yi", "yo", "zu"
+    "uk", "ur", "ug", "uz", "vi", "cy", "xh", "yi", "yo", "zu",
 ];
 
 #[derive(Clone)]
 pub struct RequestValidationMiddleware;
+
+impl Default for RequestValidationMiddleware {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl RequestValidationMiddleware {
     pub fn new() -> Self {
@@ -52,7 +56,9 @@ impl RequestValidationMiddleware {
 
 impl<S, B> Transform<S, ServiceRequest> for RequestValidationMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static + std::clone::Clone,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>
+        + 'static
+        + std::clone::Clone,
     S::Future: 'static,
     B: 'static + MessageBody,
 {
@@ -63,19 +69,27 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(RequestValidationMiddlewareService {
-            service: Arc::new(service),
-        }))
+        ready(
+            IpChecker::new(REDIS_URL)
+                .map(|checker| RequestValidationMiddlewareService {
+                    service: Arc::new(service),
+                    ip_checker: Arc::new(checker),
+                })
+                .map_err(|_| ()),
+        )
     }
 }
 
 pub struct RequestValidationMiddlewareService<S> {
     service: Arc<S>,
+    ip_checker: Arc<IpChecker>,
 }
 
 impl<S, B> Service<ServiceRequest> for RequestValidationMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>
+        + Clone
+        + 'static,
     S::Future: 'static,
     B: 'static + MessageBody,
 {
@@ -87,6 +101,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = Arc::clone(&self.service);
+        let ip_checker = Arc::clone(&self.ip_checker);
 
         Box::pin(async move {
             let ip = req
@@ -102,11 +117,9 @@ where
                 .find(|&&l| l == preferred_lang)
                 .unwrap_or(&"en");
 
-            let ip_checker = IpChecker::new("redis://127.0.0.1/")
-                .expect("Failed to create IP checker");
-
             if let Some(reason) = ip_checker.is_ip_malicious(&ip).await {
-                let error_page = render_check(selected_lang, req.uri().to_string(), reason);
+                let error_page =
+                    render_check(selected_lang, req.uri().to_string(), reason);
                 let res = HttpResponse::BadRequest()
                     .content_type("text/html")
                     .body(error_page);
@@ -122,7 +135,11 @@ where
     }
 }
 
-fn extract_header(req: &ServiceRequest, key: header::HeaderName, default: &str) -> String {
+fn extract_header(
+    req: &ServiceRequest,
+    key: header::HeaderName,
+    default: &str,
+) -> String {
     req.headers()
         .get(key)
         .and_then(|h| h.to_str().ok())
@@ -154,6 +171,12 @@ pub fn add_cookie(req: &ServiceRequest, key: String, value: String) {
 
 pub struct CookieMiddleware;
 
+impl Default for CookieMiddleware {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CookieMiddleware {
     pub fn new() -> Self {
         Self
@@ -162,7 +185,9 @@ impl CookieMiddleware {
 
 impl<S, B> Transform<S, ServiceRequest> for CookieMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>
+        + Clone
+        + 'static,
     S::Future: 'static,
     B: 'static,
 {
@@ -181,10 +206,11 @@ pub struct CookieMiddlewareService<S> {
     service: S,
 }
 
-
 impl<S, B> Service<ServiceRequest> for CookieMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>
+        + Clone
+        + 'static,
     S::Future: 'static,
     B: 'static,
 {
@@ -200,12 +226,12 @@ where
         Box::pin(async move {
             let mut response = service.call(req).await?;
 
-            let cookies_to_add: Vec<(String, String)> = if let Some(cookies) = response
-                .request()
-                .extensions()
-                .get::<RequestCookies>()
+            let cookies_to_add: Vec<(String, String)> = if let Some(cookies) =
+                response.request().extensions().get::<RequestCookies>()
             {
-                cookies.0.iter()
+                cookies
+                    .0
+                    .iter()
                     .map(|(k, v)| (k.clone(), v.clone()))
                     .collect()
             } else {
@@ -213,9 +239,7 @@ where
             };
 
             for (key, value) in cookies_to_add {
-                let cookie = cookie::Cookie::build(key, value)
-                    .path("/")
-                    .finish();
+                let cookie = cookie::Cookie::build(key, value).path("/").finish();
                 response.response_mut().add_cookie(&cookie)?;
             }
 

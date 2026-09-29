@@ -1,18 +1,18 @@
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use hmac::{Hmac, Mac};
-use lazy_static::lazy_static;
-use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
-use sha2::{Sha256, Digest};
+use rand::{thread_rng, Rng};
 use redis::{Commands, RedisError};
-use std::{sync::RwLock, time::{SystemTime, UNIX_EPOCH}};
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use sha2::{Digest, Sha256};
+use std::{
+    sync::{LazyLock, RwLock},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 type HmacSha256 = Hmac<Sha256>;
 
-
-lazy_static! {
-    static ref PROVE_OF_WORK_SECRET: RwLock<String> = RwLock::new(get_or_create_prove_of_work_secret());
-}
+static PROVE_OF_WORK_SECRET: LazyLock<RwLock<String>> =
+    LazyLock::new(|| RwLock::new(get_or_create_prove_of_work_secret()));
 
 fn get_or_create_prove_of_work_secret() -> String {
     let client = match redis::Client::open("redis://127.0.0.1/") {
@@ -31,12 +31,10 @@ fn get_or_create_prove_of_work_secret() -> String {
 
     let key = "rusty:prove_of_work_secret";
 
-    let secret: Result<String, RedisError> = con.get(&key);
+    let secret: Result<String, RedisError> = con.get(key);
 
     match secret {
-        Ok(existing_secret) => {
-            existing_secret
-        },
+        Ok(existing_secret) => existing_secret,
         Err(_) => {
             let new_secret = generate_random_secret();
             let _: Result<String, RedisError> = con.set(key, new_secret.clone());
@@ -51,22 +49,18 @@ pub(crate) fn get_pow() -> String {
 
 fn generate_random_secret() -> String {
     let mut rng = rand::thread_rng();
-    (0..32)
-        .map(|_| rng.sample(Alphanumeric) as char)
-        .collect()
+    (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()
 }
 
 pub struct PoW {
     pub secret: String,
+    #[allow(dead_code)]
     pub hardness: usize,
 }
 
 impl PoW {
     pub fn new(secret: String, hardness: usize) -> Self {
-        PoW {
-            secret,
-            hardness,
-        }
+        PoW { secret, hardness }
     }
 
     pub fn generate_challenge(&self, ip: &str) -> (String, String) {
@@ -96,7 +90,13 @@ impl PoW {
         (challenge, final_signature)
     }
 
-    pub fn verify_solution(&self, solution: &str, signature_string: &str, client_ip: &str) -> bool {
+    #[allow(dead_code)]
+    pub fn verify_solution(
+        &self,
+        solution: &str,
+        signature_string: &str,
+        client_ip: &str,
+    ) -> bool {
         let parts: Vec<&str> = signature_string.split(':').collect();
         if parts.len() != 3 {
             return false;
@@ -212,6 +212,10 @@ mod tests {
         assert!(!pow.verify_solution("", &signature, ip));
         assert!(!pow.verify_solution("solution", "challenge:invalid_time:signature", ip));
         assert!(!pow.verify_solution("solution", &signature, "192.168.1.1"));
-        assert!(!pow.verify_solution("solution", "challenge:1234567890:invalid_base64!", ip));
+        assert!(!pow.verify_solution(
+            "solution",
+            "challenge:1234567890:invalid_base64!",
+            ip
+        ));
     }
 }

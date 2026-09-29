@@ -26,6 +26,8 @@ mod captcha;
 // TODO: Each request will distort these images and store the correct versions along with a timestamp and the corresponding IP address
 // TODO: for correlation purposes. All templates and AI datasets should be preloaded into memory at startup for efficient access.
 
+const REDIS_URL: &str = "redis://127.0.0.1/";
+
 const LANGUAGES: [&str; 107] = [
     "af", "sq", "am", "ar", "hy", "az", "eu", "be", "bn", "bs", "bg", "ca", "ceb", "ny",
     "zh-cn", "zh-tw", "co", "hr", "cs", "da", "nl", "en", "eo", "et", "tl", "fi", "fr",
@@ -67,14 +69,20 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(RequestValidationMiddlewareService {
-            service: Arc::new(service),
-        }))
+        ready(
+            IpChecker::new(REDIS_URL)
+                .map(|checker| RequestValidationMiddlewareService {
+                    service: Arc::new(service),
+                    ip_checker: Arc::new(checker),
+                })
+                .map_err(|_| ()),
+        )
     }
 }
 
 pub struct RequestValidationMiddlewareService<S> {
     service: Arc<S>,
+    ip_checker: Arc<IpChecker>,
 }
 
 impl<S, B> Service<ServiceRequest> for RequestValidationMiddlewareService<S>
@@ -93,6 +101,7 @@ where
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = Arc::clone(&self.service);
+        let ip_checker = Arc::clone(&self.ip_checker);
 
         Box::pin(async move {
             let ip = req
@@ -107,9 +116,6 @@ where
                 .iter()
                 .find(|&&l| l == preferred_lang)
                 .unwrap_or(&"en");
-
-            let ip_checker = IpChecker::new("redis://127.0.0.1/")
-                .expect("Failed to create IP checker");
 
             if let Some(reason) = ip_checker.is_ip_malicious(&ip).await {
                 let error_page =

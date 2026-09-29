@@ -1,49 +1,33 @@
 use html_escape::encode_text;
 use std::{
     collections::HashMap,
-    fs::{read_dir, File},
-    io::{Read, Result},
     sync::{LazyLock, RwLock},
 };
 
 use crate::captcha::{get_pow, PoW};
 use crate::utils::{append_query_prefix, get_domain_host};
 
+const TRANSLATIONS_JSON: &str = include_str!("assets/translations.json");
+const TEMPLATE_FILES: [(&str, &str); 2] = [
+    ("captcha.html", include_str!("templates/captcha.html")),
+    ("check.html", include_str!("templates/check.html")),
+];
+
 static TRANSLATIONS: LazyLock<RwLock<HashMap<String, HashMap<String, String>>>> =
-    LazyLock::new(|| RwLock::new(load_translations().unwrap()));
-static TEMPLATES: LazyLock<RwLock<HashMap<String, String>>> =
-    LazyLock::new(|| RwLock::new(load_templates().unwrap()));
-
-fn load_translations() -> Result<HashMap<String, HashMap<String, String>>> {
-    let path = "./assets/translations.json";
-    let file = File::open(path)?;
-    let translations: HashMap<String, HashMap<String, String>> =
-        serde_json::from_reader(file)?;
-    Ok(translations)
-}
-
-fn load_templates() -> Result<HashMap<String, String>> {
-    let mut templates = HashMap::new();
-
-    let template_dir = "./templates";
-    let entries = read_dir(template_dir)?;
-
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "html") {
-            if let Some(filename) = path.file_name() {
-                let filename = filename.to_string_lossy().to_string();
-                let mut file = File::open(&path)?;
-                let mut content = String::new();
-                file.read_to_string(&mut content)?;
-                templates.insert(filename, content);
-            }
-        }
-    }
-
-    Ok(templates)
-}
+    LazyLock::new(|| {
+        RwLock::new(
+            serde_json::from_str(TRANSLATIONS_JSON)
+                .expect("embedded translations.json is valid"),
+        )
+    });
+static TEMPLATES: LazyLock<RwLock<HashMap<String, String>>> = LazyLock::new(|| {
+    RwLock::new(
+        TEMPLATE_FILES
+            .iter()
+            .map(|(name, content)| (name.to_string(), content.to_string()))
+            .collect(),
+    )
+});
 
 fn get_template(template_name: &str) -> Option<String> {
     let templates = TEMPLATES.read().unwrap();
@@ -103,4 +87,25 @@ pub fn render_check(lang_code: &str, request_url: String, reason: String) -> Str
 #[allow(dead_code)]
 fn render_captcha(lang_code: &str, request_url: String) -> String {
     render_template("captcha.html", lang_code, request_url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_assets_load() {
+        assert!(!TRANSLATIONS.read().unwrap().is_empty());
+        assert!(get_template("check.html").is_some());
+        assert!(get_template("captcha.html").is_some());
+    }
+
+    #[test]
+    fn render_check_fills_placeholders() {
+        let page = render_check("en", "http://example.com/a".into(), "TOR".into());
+        assert!(!page.is_empty());
+        for placeholder in ["POWCHALLENGE", "POWSTATE", "REASON", "REQUESTURL"] {
+            assert!(!page.contains(placeholder), "{placeholder} left in page");
+        }
+    }
 }

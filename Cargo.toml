@@ -1,23 +1,40 @@
 [package]
-name = "rusty_shield"
-version = "1.0.1"
+name = "rshield"
+version = "1.1.0"
 edition = "2021"
+rust-version = "1.80"
+description = "Actix-web middleware that challenges unglobal, malicious and TOR clients with proof-of-work or CAPTCHA."
+readme = "README.md"
+authors = ["TN3W <tn3w@protonmail.com>"]
+license = "Apache-2.0"
+repository = "https://github.com/tn3w/rshield"
+homepage = "https://github.com/tn3w/rshield"
+documentation = "https://docs.rs/rshield"
+keywords = ["actix-web", "middleware", "captcha", "proof-of-work", "bot-detection"]
+categories = ["web-programming", "web-programming::http-server", "authentication"]
+exclude = [".github/", "scripts/"]
 
 [dependencies]
-serde = { version = "1.0.216", features = ["derive"] }
-serde_json = "1.0.134"
-lazy_static = "1.5.0"
-url = "2.5.4"
-hmac = "0.12.1"
-rand = "0.8.5"
-sha2 = "0.10.8"
+actix-web = "4.9.0"
 base64 = "0.22.1"
-html-escape = "0.2.13"
-redis = "0.27.6"
-reqwest = { version = "0.12.9", features = ["json"] }
 chrono = "0.4.39"
 dns-lookup = "2.0.4"
-actix-web = "4.9.0"
 futures-util = "0.3.31"
+hmac = "0.12.1"
+html-escape = "0.2.13"
+rand = "0.8.5"
+redis = "0.27.6"
+reqwest = { version = "0.12.9", features = ["json"] }
+serde = { version = "1.0.216", features = ["derive"] }
+serde_json = "1.0.134"
+sha2 = "0.10.8"
+url = "2.5.4"
+
+[dev-dependencies]
 actix-rt = "2.10.0"
-futures = "0.3.31"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

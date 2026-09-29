@@ -8,30 +8,53 @@
 <h1 align="center">rshield</h1>
 <p align="center">An Actix-web middleware for checking IP addresses to identify unglobal, malicious, and TOR connections. It provides the browser with a zero-click Proof of Work (PoW) task, or, if JavaScript is disabled, a one-click CAPTCHA image challenge.</p>
 
-## 🚀 Installing
-Just add the following line to `[dependencies]` in your `Cargo.toml` file:
+<p align="center">
+    <a href="https://github.com/tn3w/rshield/actions/workflows/test.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/tn3w/rshield/test.yml?style=flat-square&label=tests"></a>
+    <a href="https://crates.io/crates/rshield"><img alt="Crates.io" src="https://img.shields.io/crates/v/rshield?style=flat-square"></a>
+    <img alt="MSRV" src="https://img.shields.io/badge/rust-1.80%2B-orange?style=flat-square">
+    <a href="https://github.com/tn3w/rshield/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/tn3w/rshield?style=flat-square"></a>
+    <a href="https://github.com/tn3w/rshield/issues"><img alt="Issues" src="https://img.shields.io/github/issues/tn3w/rshield?style=flat-square"></a>
+    <a href="https://github.com/tn3w/rshield/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/tn3w/rshield?style=flat-square"></a>
+</p>
+
+## Install
+
+```bash
+cargo add rshield
+```
+
+Or from git:
+
 ```toml
 [dependencies]
 rshield = { git = "https://github.com/tn3w/rshield" }
 ```
 
-And then integrate the MiddleWare into your Actix-web app by registering it:
+Rust 1.80 or newer. A Redis server on `127.0.0.1:6379` is used for caching.
+
+## How it works
+
+1. Each request's peer IP is checked: unglobal ranges, known malicious addresses (ipapi), TOR exit nodes.
+2. Results are cached in Redis.
+3. Flagged clients get a challenge page in their `Accept-Language` (107 languages).
+4. Browsers with JavaScript solve a zero-click proof-of-work task; without JavaScript, a one-click image CAPTCHA is shown.
+
+## Quick start
 
 ```rust
-use actix_web::{web, App, HttpServer, HttpResponse};
-use rshield::{RequestValidationMiddleware, CookieMiddleware};
+use actix_web::{web, App, HttpResponse, HttpServer};
+use rshield::{CookieMiddleware, RequestValidationMiddleware};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
-            //.wrap(RateLimitMiddleware) // Coming soon
-            .wrap(RequestValidationMiddleware) // Register the request validation middleware
-            .service(
-                web::scope("")
-                    .route("/", web::get().to(|| async { HttpResponse::Ok().body("Hello World!") }))
-            )
-            .wrap(CookieMiddleware)  // Register the cookie middleware after all services (required for RequestValidationMiddleware)
+            .wrap(RequestValidationMiddleware)
+            .service(web::scope("").route(
+                "/",
+                web::get().to(|| async { HttpResponse::Ok().body("Hello World!") }),
+            ))
+            .wrap(CookieMiddleware)
     })
     .bind("127.0.0.1:8080")?
     .run()
@@ -39,40 +62,32 @@ async fn main() -> std::io::Result<()> {
 }
 ```
 
-## Building
-1. Install Rust using rust-up (optional): 
-    ```bash
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    ```
+`CookieMiddleware` must be registered after all services, `RequestValidationMiddleware` depends on it.
 
-2. Clone the git project:
-    ```bash
-    git clone https://github.com/tn3w/rshield.git
-    ```
+## Development
 
-3. Move into the project folder:
-    ```bash
-    cd rshield
-    ```
+```bash
+git clone https://github.com/tn3w/rshield.git
+cd rshield
+cargo fmt
+cargo clippy --all-targets -- -D warnings
+cargo test                  # unit tests
+cargo test -- --ignored     # network + Redis tests
+```
 
-4. Setup Redis
-    ```bash
-    sudo apt-get update
-    sudo apt-get install redis -y
-    sudo systemctl enable redis-server.service
-    sudo systemctl start redis-server.service
-    ```
+Redis and OpenSSL headers are needed locally:
 
-5. Install libssl-dev:
-    ```bash
-    sudo apt-get update
-    sudo apt-get install libssl-dev -y
-    ``` 
+```bash
+sudo apt-get install redis libssl-dev -y
+redis-server --daemonize yes
+```
 
-6. Build rshield
-    ```bash
-    cargo build --release
-    ```
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
-### Attribution
+## Attribution
+
 - Logo icon: [Rust icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/rust)
+
+## License
+
+[Apache-2.0](https://github.com/tn3w/rshield/blob/main/LICENSE)

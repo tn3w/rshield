@@ -1,10 +1,10 @@
-use url::Url;
 use redis::{Client, Commands, RedisError};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::error::Error;
+use url::Url;
 
 pub(crate) fn get_domain_host(request_url: String) -> String {
-    let host = match Url::parse(&*request_url) {
+    let host = match Url::parse(&request_url) {
         Ok(url) => {
             let mut host = url.host_str().unwrap_or("");
             if let Some(pos) = host.find(':') {
@@ -24,10 +24,11 @@ pub(crate) fn get_domain_host(request_url: String) -> String {
     let parts: Vec<&str> = host.split('.').collect();
 
     if host.len() > 20 || parts.iter().any(|&part| part.len() > 10) {
-        host = parts.iter()
+        host = parts
+            .iter()
             .rev()
             .take(2)
-            .map(|&part| part)
+            .copied()
             .collect::<Vec<_>>()
             .join(".");
     }
@@ -68,10 +69,19 @@ impl CacheHandler {
     }
 
     fn build_cache_key(&self, cache_key: &str, field_value: &str) -> String {
-        format!("{}:{}:{}", self.prefix, cache_key, self.hash_field_value(field_value))
+        format!(
+            "{}:{}:{}",
+            self.prefix,
+            cache_key,
+            self.hash_field_value(field_value)
+        )
     }
 
-    pub fn get_cached_bool(&self, cache_key: &str, field_value: &str) -> Result<Option<bool>, Box<dyn Error>> {
+    pub fn get_cached_bool(
+        &self,
+        cache_key: &str,
+        field_value: &str,
+    ) -> Result<Option<bool>, Box<dyn Error>> {
         let mut con = self.client.get_connection()?;
         let full_key = self.build_cache_key(cache_key, field_value);
 
@@ -79,7 +89,13 @@ impl CacheHandler {
         Ok(result.map(|v| v == "1"))
     }
 
-    pub fn set_cached_bool(&self, cache_key: &str, field_value: &str, value: bool, ttl: usize) -> Result<(), Box<dyn Error>> {
+    pub fn set_cached_bool(
+        &self,
+        cache_key: &str,
+        field_value: &str,
+        value: bool,
+        ttl: usize,
+    ) -> Result<(), Box<dyn Error>> {
         let mut con = self.client.get_connection()?;
         let full_key = self.build_cache_key(cache_key, field_value);
         let value_str = if value { "1" } else { "0" };

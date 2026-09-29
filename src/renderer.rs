@@ -1,39 +1,37 @@
-use serde::Deserialize;
-use lazy_static::lazy_static;
 use html_escape::encode_text;
-use std::{collections::HashMap, sync::RwLock, fs::{File, read_dir}, io::{Result, Read}};
+use std::{
+    collections::HashMap,
+    fs::{read_dir, File},
+    io::{Read, Result},
+    sync::{LazyLock, RwLock},
+};
 
-use crate::captcha::{PoW, get_pow};
-use crate::utils::{get_domain_host, append_query_prefix};
+use crate::captcha::{get_pow, PoW};
+use crate::utils::{append_query_prefix, get_domain_host};
 
-#[derive(Deserialize, Debug)]
-struct Translations {
-    #[serde(flatten)]
-    pub _translations: HashMap<String, HashMap<String, String>>,
-}
-
-lazy_static! {
-    static ref TRANSLATIONS: RwLock<HashMap<String, HashMap<String, String>>> = RwLock::new(load_translations().unwrap());
-    static ref TEMPLATES: RwLock<HashMap<String, String>> = RwLock::new(load_templates().unwrap());
-}
+static TRANSLATIONS: LazyLock<RwLock<HashMap<String, HashMap<String, String>>>> =
+    LazyLock::new(|| RwLock::new(load_translations().unwrap()));
+static TEMPLATES: LazyLock<RwLock<HashMap<String, String>>> =
+    LazyLock::new(|| RwLock::new(load_templates().unwrap()));
 
 fn load_translations() -> Result<HashMap<String, HashMap<String, String>>> {
     let path = "./assets/translations.json";
     let file = File::open(path)?;
-    let translations: HashMap<String, HashMap<String, String>> = serde_json::from_reader(file)?;
+    let translations: HashMap<String, HashMap<String, String>> =
+        serde_json::from_reader(file)?;
     Ok(translations)
 }
 
 fn load_templates() -> Result<HashMap<String, String>> {
     let mut templates = HashMap::new();
-    
+
     let template_dir = "./templates";
     let entries = read_dir(template_dir)?;
-    
+
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().map_or(false, |ext| ext == "html") {
+        if path.extension().is_some_and(|ext| ext == "html") {
             if let Some(filename) = path.file_name() {
                 let filename = filename.to_string_lossy().to_string();
                 let mut file = File::open(&path)?;
@@ -77,10 +75,15 @@ fn render_template(template_name: &str, lang_code: &str, request_url: String) ->
     let template = get_template(template_name);
     let mut translated_template = translate_template(template, lang_code);
 
-    translated_template = translated_template.replace("LANGUAGE", &*encode_text(&lang_code));
-    translated_template = translated_template.replace("REQUESTURL", &*encode_text(&append_query_prefix(&request_url)));
+    translated_template =
+        translated_template.replace("LANGUAGE", &encode_text(&lang_code));
+    translated_template = translated_template.replace(
+        "REQUESTURL",
+        &encode_text(&append_query_prefix(&request_url)),
+    );
     let domain = get_domain_host(request_url);
-    translated_template = translated_template.replace("DOMAIN", &*encode_text(domain.as_str()));
+    translated_template =
+        translated_template.replace("DOMAIN", &encode_text(domain.as_str()));
 
     translated_template
 }
@@ -91,13 +94,13 @@ pub fn render_check(lang_code: &str, request_url: String, reason: String) -> Str
     let pow = PoW::new(get_pow(), 5);
     let (challenge, state) = pow.generate_challenge("127.0.0.1");
     template = template.replace("DIFFICULTY", "10");
-    template = template.replace("POWCHALLENGE", &*encode_text(&challenge));
-    template = template.replace("POWSTATE", &*encode_text(&state));
-    template = template.replace("REASON", &*encode_text(&reason));
+    template = template.replace("POWCHALLENGE", &encode_text(&challenge));
+    template = template.replace("POWSTATE", &encode_text(&state));
+    template = template.replace("REASON", &encode_text(&reason));
     template
 }
 
+#[allow(dead_code)]
 fn render_captcha(lang_code: &str, request_url: String) -> String {
-    let template = render_template("captcha.html", lang_code, request_url);
-    template
+    render_template("captcha.html", lang_code, request_url)
 }

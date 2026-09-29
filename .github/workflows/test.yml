@@ -35,6 +35,14 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
 
+      - name: Pin MSRV-compatible dependencies
+        if: matrix.toolchain != 'stable'
+        run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable generate-lockfile
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Test

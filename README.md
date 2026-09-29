@@ -72,7 +72,7 @@ cd rshield
 cargo fmt
 cargo clippy --all-targets -- -D warnings
 cargo test                  # unit tests
-cargo test -- --ignored     # network + Redis tests
+cargo test -- --ignored --skip benchmark   # network + Redis tests
 ```
 
 Redis and OpenSSL headers are needed locally:

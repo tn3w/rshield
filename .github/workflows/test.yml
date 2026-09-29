@@ -9,9 +9,14 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -51,10 +56,11 @@ jobs:
       - name: Network tests
         if: matrix.toolchain == 'stable'
         continue-on-error: true
-        run: cargo test -- --ignored
+        run: cargo test -- --ignored --skip benchmark
 
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

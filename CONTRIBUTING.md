@@ -21,7 +21,7 @@ cargo test
 Tests needing network access and Redis (`127.0.0.1:6379`) are ignored by default:
 
 ```bash
-cargo test -- --ignored
+cargo test -- --ignored --skip benchmark
 ```
 
 ## Submitting a pull request

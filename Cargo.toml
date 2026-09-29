@@ -16,7 +16,7 @@ exclude = [".github/", "scripts/"]
 
 [dependencies]
 actix-web = "4.9.0"
-base64 = "0.22.1"
+base64 = "0.23.1"
 chrono = "0.4.39"
 dns-lookup = "2.0.4"
 futures-util = "0.3.31"

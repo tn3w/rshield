@@ -43,7 +43,7 @@ cargo test -- --ignored --skip benchmark
 - Max 90 characters per line (`rustfmt.toml`)
 - No comments unless absolutely necessary: write self-documenting code
 - Use early returns and keep nesting below 4 levels
-- Minimum supported Rust version is 1.80
+- Minimum supported Rust version is 1.85
 
 ## Reporting security issues
 

@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: ['1.80', stable]
+        toolchain: ['1.85', stable]
 
     services:
       redis:
@@ -45,6 +45,8 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           cargo +stable generate-lockfile
+          # yoke-derive 0.8.3 uses APIs newer than 1.85 without declaring a rust-version
+          cargo +stable update -p yoke-derive --precise 0.8.2
         env:
           CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
 

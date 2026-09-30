@@ -11,7 +11,7 @@
 <p align="center">
     <a href="https://github.com/tn3w/rshield/actions/workflows/test.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/tn3w/rshield/test.yml?style=flat-square&label=tests"></a>
     <a href="https://crates.io/crates/rshield"><img alt="Crates.io" src="https://img.shields.io/crates/v/rshield?style=flat-square"></a>
-    <img alt="MSRV" src="https://img.shields.io/badge/rust-1.80%2B-orange?style=flat-square">
+    <img alt="MSRV" src="https://img.shields.io/badge/rust-1.85%2B-orange?style=flat-square">
     <a href="https://github.com/tn3w/rshield/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/tn3w/rshield?style=flat-square"></a>
     <a href="https://github.com/tn3w/rshield/issues"><img alt="Issues" src="https://img.shields.io/github/issues/tn3w/rshield?style=flat-square"></a>
     <a href="https://github.com/tn3w/rshield/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/tn3w/rshield?style=flat-square"></a>
@@ -30,7 +30,7 @@ Or from git:
 rshield = { git = "https://github.com/tn3w/rshield" }
 ```
 
-Rust 1.80 or newer. A Redis server on `127.0.0.1:6379` is used for caching.
+Rust 1.85 or newer. A Redis server on `127.0.0.1:6379` is used for caching.
 
 ## How it works
 

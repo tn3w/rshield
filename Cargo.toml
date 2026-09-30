@@ -2,7 +2,7 @@
 name = "rshield"
 version = "1.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.85"
 description = "Actix-web middleware that challenges unglobal, malicious and TOR clients with proof-of-work or CAPTCHA."
 readme = "README.md"
 authors = ["TN3W <tn3w@protonmail.com>"]
@@ -20,14 +20,14 @@ base64 = "0.23.1"
 chrono = "0.4.39"
 dns-lookup = "2.0.4"
 futures-util = "0.3.31"
-hmac = "0.12.1"
+hmac = "0.13.0"
 html-escape = "0.2.13"
-rand = "0.8.5"
+rand = "0.10.3"
 redis = "0.27.6"
-reqwest = { version = "0.12.9", features = ["json"] }
+reqwest = { version = "0.13.5", features = ["json"] }
 serde = { version = "1.0.216", features = ["derive"] }
 serde_json = "1.0.134"
-sha2 = "0.10.8"
+sha2 = "0.11.0"
 url = "2.5.4"
 
 [dev-dependencies]

@@ -36,6 +36,10 @@ pub(crate) fn get_domain_host(request_url: String) -> String {
     host
 }
 
+pub(crate) fn to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
 pub(crate) fn append_query_prefix(request_url: &str) -> String {
     let mut updated_url = String::from(request_url);
 
@@ -65,7 +69,7 @@ impl CacheHandler {
     fn hash_field_value(&self, value: &str) -> String {
         let mut hasher = Sha256::new();
         hasher.update(value.as_bytes());
-        format!("{:x}", hasher.finalize())
+        to_hex(&hasher.finalize())
     }
 
     fn build_cache_key(&self, cache_key: &str, field_value: &str) -> String {

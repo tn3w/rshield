@@ -1,13 +1,14 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use hmac::{Hmac, Mac};
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use hmac::{Hmac, KeyInit, Mac};
+use rand::distr::{Alphanumeric, SampleString};
 use redis::{Commands, RedisError};
 use sha2::{Digest, Sha256};
 use std::{
     sync::{LazyLock, RwLock},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+use crate::utils::to_hex;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -48,8 +49,7 @@ pub(crate) fn get_pow() -> String {
 }
 
 fn generate_random_secret() -> String {
-    let mut rng = rand::thread_rng();
-    (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()
+    Alphanumeric.sample_string(&mut rand::rng(), 32)
 }
 
 pub struct PoW {
@@ -64,11 +64,7 @@ impl PoW {
     }
 
     pub fn generate_challenge(&self, ip: &str) -> (String, String) {
-        let challenge: String = thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(32)
-            .map(char::from)
-            .collect();
+        let challenge = Alphanumeric.sample_string(&mut rand::rng(), 32);
 
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -143,7 +139,7 @@ impl PoW {
         let target = "0".repeat(self.hardness);
         let mut hasher = Sha256::new();
         hasher.update(solution.as_bytes());
-        let hash = format!("{:x}", hasher.finalize());
+        let hash = to_hex(&hasher.finalize());
 
         if hash.len() < self.hardness {
             return false;
@@ -189,7 +185,7 @@ mod tests {
             solution = format!("{}{}", challenge, nonce);
             let mut hasher = Sha256::new();
             hasher.update(solution.as_bytes());
-            let hash = format!("{:x}", hasher.finalize());
+            let hash = to_hex(&hasher.finalize());
 
             if hash.starts_with("00") {
                 break;

@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: ['1.80', stable]
+        toolchain: ['1.85', stable]
 
     services:
       redis:

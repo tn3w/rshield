@@ -2,7 +2,7 @@
 name = "rshield"
 version = "1.1.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.88"
 description = "Actix-web middleware that challenges unglobal, malicious and TOR clients with proof-of-work or CAPTCHA."
 readme = "README.md"
 authors = ["TN3W <tn3w@protonmail.com>"]

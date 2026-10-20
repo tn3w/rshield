@@ -21,7 +21,7 @@ chrono = "0.4.39"
 dns-lookup = "4.0.2"
 futures-util = "0.3.31"
 hmac = "0.13.0"
-html-escape = "0.2.13"
+html-escape = "0.3.0"
 rand = "0.10.3"
 redis = "1.7.1"
 reqwest = { version = "0.13.5", features = ["json"] }
